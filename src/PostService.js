@@ -1,9 +1,10 @@
 import axios from "./axios";
 
-export default class UserService {
-  static async save(payload) {
+export default class PostService {
+
+  static async all() {
     try {
-      const res = await axios.post('/user', payload);
+      const res = await axios.get(`/posts`);
       return res.data;
     } catch (e) {
       if (e.response.data)
@@ -12,9 +13,9 @@ export default class UserService {
     }
   }
 
-  static async find() {
+  static async find(id) {
     try {
-     const res = await axios.get(`/users`);
+      const res = await axios.get(`/posts/${id}`);
       return res.data;
     } catch (e) {
       if (e.response.data)
@@ -23,14 +24,10 @@ export default class UserService {
     }
   }
 
-  static async delete(id) {
+  static async findFriendPosts(id) {
     try {
-      if (!id) {
-        new Error("O usuário que está tentando excluir é inválido ou não está salvo no servidor.")
-        return;
-      }
-      await axios.delete(`/user/${id}`);
-      return true;
+      const res = await axios.get(`/posts/profile/${id}`);
+      return res.data;
     } catch (e) {
       if (e.response.data)
         throw Error(e.response.data.message);

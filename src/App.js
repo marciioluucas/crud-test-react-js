@@ -1,16 +1,17 @@
 import React, {Component} from 'react';
 import {Grid, Card, CardContent} from "@material-ui/core";
-import axios from "./axios";
-import UserList from "./UserList";
-import {withStyles} from "@material-ui/core/styles";
+import Posts from "./Posts";
 import Typography from "@material-ui/core/Typography";
 import TextField from "@material-ui/core/TextField";
 import Button from "@material-ui/core/Button";
 import Divider from "@material-ui/core/Divider";
 import Snackbar from "@material-ui/core/Snackbar";
 import MuiAlert from '@material-ui/lab/Alert';
-import UserService from "./UserService";
-import Paper from "@material-ui/core/Paper";
+import PostService from "./PostService";
+import Avatar from "@material-ui/core/Avatar";
+import ProfileService from "./ProfileService";
+import Friend from "./Friend";
+import CardActionArea from "@material-ui/core/CardActionArea";
 
 function Alert(props) {
   return <MuiAlert elevation={6} variant="filled" {...props} />;
@@ -21,25 +22,32 @@ class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      hasMessage: false,
-      messageType: 'success',
-      user: {
-        username: "",
-        password: "",
-        email: "",
-        profile: {
-          gamerTag: "",
-          nickname: ""
-        },
-      },
-      items: []
+      friends: [],
+      items: [],
+      selectedFriend: null,
     }
   }
 
-  componentDidMount() {
-    UserService.find().then((items) => {
+  getAllPosts() {
+    PostService.all().then((items) => {
       this.setState({
         items
+      })
+    }).catch((e) => {
+      this.setState({
+        hasMessage: true,
+        messageType: 'error',
+        message: e.message
+      });
+    });
+  }
+
+  componentDidMount() {
+    this.getAllPosts()
+
+    ProfileService.findFriends().then((friends) => {
+      this.setState({
+        friends
       })
     }).catch((e) => {
       this.setState({
@@ -53,7 +61,7 @@ class App extends Component {
 
   async deleteUser(user) {
     try {
-      await UserService.delete(user.id);
+      await PostService.delete(user.id);
 
       let users = this.state.items;
 
@@ -78,215 +86,62 @@ class App extends Component {
     }
   }
 
-  async save() {
-    try {
-      const isEditing = this.state.user.id;
-      const user = await UserService.save(this.state.user);
-      if (isEditing) {
-        const items = this.state.items;
-        items.splice(items.indexOf(this.state.user), 1, user)
-        this.setState(
-          {items}
-        )
-      } else {
-        this.setState({
-          items: [...this.state.items, user],
-        });
-      }
-      this.setState({
-
-        hasMessage: true,
-        messageType: 'success',
-        message: `Usuário ${isEditing ? 'salvo' : 'criado'} com sucesso!`
-      });
-
-      this.clear();
-    } catch (e) {
-      this.setState({
-        hasMessage: true,
-        messageType: 'error',
-        message: e.message
-      });
-    }
-  }
-
-  fillUser(payload) {
-    this.setState({user: payload})
-  }
-
-  clear() {
-    this.setState({
-      user: {
-        username: "",
-        password: "",
-        email: "",
-        profile: {
-          gamerTag: "",
-          nickname: ""
-        },
-      }
-    })
-  }
-
-  handleUsernameChange = (event) => {
-    this.setState({
-      user: {
-        ...this.state.user,
-        username: event.target.value,
-      },
-    });
-  };
-
-  handlePasswordChange = (event) => {
-    this.setState({
-      user: {
-        ...this.state.user,
-        password: event.target.value,
-      },
-    });
-  }
-
-  handleEmailChange = (event) => {
-    this.setState({
-      user: {
-        ...this.state.user,
-        email: event.target.value,
-      },
-    });
-  }
-
-  handleNickNameChange = (event) => {
-    this.setState({
-      user: {
-        ...this.state.user,
-        profile: {
-          ...this.state.user.profile,
-          nickname: event.target.value,
-        }
-      },
-    });
-  }
-
-  handleGamerTagChange = (event) => {
-    this.setState({
-      user: {
-        ...this.state.user,
-        profile: {
-          ...this.state.user.profile,
-          gamerTag: event.target.value,
-        }
-      },
-    });
-  }
-
-  isValid() {
-    const {username, password, email, profile} = this.state.user;
-
-    return username !== '' && password !== '' && email !== '' && profile.nickname !== '' && profile.gamerTag !== ''
-  }
-
 
   render() {
     const classes = styles();
     return (
-      <div>
+      <div className={classes.app}>
+
         <div style={classes.background}/>
-        <Grid container style={classes.root}>
+        <Grid container style={classes.root} spacing={4}>
+          <Grid item xs={2} style={{height: "auto"}}>
+            <Card style={{width: '100%'}}>
+              <CardContent>
+                <CardActionArea onClick={() => {
+                  this.getAllPosts();
+                  this.setState({
+                    selectedFriend: null,
+                  })
+                }}>
+                  <Grid container>
+                    <Grid item xs={3}>
+                      <Avatar alt="Márcio Lucas" src="https://api.adorable.io/avatars/285/abott@adorable.png"/>
+                    </Grid>
+                    <Grid item xs={9}>
+                      <Typography variant="h6" component="h5">
+                        Márcio Lucas
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardActionArea>
+                <Divider style={{marginTop: 15}}/>
+                <Typography gutterBottom variant="body2" component="span">Amigos</Typography>
+                <Grid container spacing={1} style={{marginTop: '5px'}}>
+                  {this.state.friends.map((friend, index) => {
+                    return (
+                      <Grid item xs={6}>
+                        <Friend key={index} model={friend} onFriendClick={(friend) => this.handleFriendClick(friend)}/>
+                      </Grid>
+                    )
+                  })}
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
           <Grid item xs={5}>
             <Card style={classes.card}>
               <Grid container>
                 <Grid item xs={12}>
                   <CardContent>
                     <Typography gutterBottom variant="h5" component="h2">
-                      Crud
+                      Fakebook
                     </Typography>
 
                     <Typography variant="body2" color="textSecondary" component="p">
-                      Crud de usuário para teste da Spring Framework com ReactJS
+                      {this.state.selectedFriend && `Mostrando os posts de ${this.state.selectedFriend.name}`}
                     </Typography>
-                    <Grid container>
-                      <Grid item xs={4}>
-                        <TextField
-                          label="Nome de usuário"
-                          placeholder="nome de usuário"
-                          ref={this.handleInputRef}
-                          value={this.state.user.username}
-                          onChange={this.handleUsernameChange}
-                          margin="normal"
-                          InputLabelProps={{
-                            shrink: true,
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          label="Senha"
-                          value={this.state.user.password}
-                          onChange={this.handlePasswordChange}
-                          placeholder="sua senha"
-                          disabled={this.state.user.id}
-                          margin="normal"
-                          type="password"
-                          InputLabelProps={{
-                            shrink: true,
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          label="E-mail"
-                          value={this.state.user.email}
-                          onChange={this.handleEmailChange}
-                          placeholder="e-mail"
-                          margin="normal"
-                          InputLabelProps={{
-                            shrink: true,
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          label="Nickname"
-                          value={this.state.user.profile.nickname}
-                          onChange={this.handleNickNameChange}
-                          placeholder="seu nickname"
-                          margin="normal"
-                          InputLabelProps={{
-                            shrink: true,
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={4}>
-                        <TextField
-                          label="GamerTag"
-                          value={this.state.user.profile.gamerTag}
-                          onChange={this.handleGamerTagChange}
-                          placeholder="sua gamerTag"
-                          margin="normal"
-                          InputLabelProps={{
-                            shrink: true,
-                          }}
-                        />
-                      </Grid>
-                      <Grid item xs={12}>
-                        <Grid container justify={"flex-end"}>
-                          <Button style={{marginRight: 10}} onClick={() => this.clear()}>Limpar</Button>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            onClick={() => this.save()}
-                            disabled={!this.isValid()}
-                            style={classes.button}>
-                            Enviar
-                          </Button>
-                        </Grid>
-                      </Grid>
-                    </Grid>
                     <Divider style={{marginTop: 15}}/>
-                    <div style={{maxHeight: "60vh", overflow: 'auto'}}>
-                      <UserList items={this.state.items} onItemClick={(user) => this.fillUser(user)}
-                                onItemDelete={(user) => this.deleteUser(user)}/>
-                    </div>
+                    <Posts items={this.state.items}/>
                   </CardContent>
                 </Grid>
 
@@ -309,6 +164,14 @@ class App extends Component {
       hasMessage: false,
     })
   }
+
+  async handleFriendClick(friend) {
+    const posts = await PostService.findFriendPosts(friend.id);
+    this.setState({
+      items: posts,
+      selectedFriend: friend,
+    })
+  }
 }
 
 
@@ -319,13 +182,15 @@ const styles = () => ({
     position: "absolute",
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'start'
   },
   card: {
     display: "flex",
-    height: "calc(100vh - 100px)"
+    marginBottom: "25px"
   },
-
+  app: {
+    background: "#cdc9e2"
+  },
   background: {
     position: "absolute",
     height: 200,
